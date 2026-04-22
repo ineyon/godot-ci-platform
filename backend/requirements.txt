@@ -1,3 +1,5 @@
 fastapi
 uvicorn
 PyGithub
+pytest
+httpx
