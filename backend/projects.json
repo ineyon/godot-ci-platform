@@ -1,0 +1,15 @@
+[
+  {
+    "id": "ad3bdd42-2d9a-4bbe-a901-d403dc6d7f68",
+    "name": "lobotomanov",
+    "github_token": "1",
+    "github_repo": "1",
+    "itch_username": "ineyoff",
+    "itch_game_id": "1",
+    "godot_version": "4",
+    "export_targets": [
+      "Web",
+      "Windows"
+    ]
+  }
+]
