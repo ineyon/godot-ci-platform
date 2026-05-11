@@ -58,25 +58,25 @@ def trigger_project_build(project_id : str):
         raise HTTPException(status_code=404, detail="Project not found")
     return trigger_build(project["github_token"], project["github_repo"])
 
-@app.post("api/projects/{project_id}/connect")
+@app.post("api/projects/{project_id}/connect")  #підключаємо проект гри з репо гіта
 def connect_project(project_id: str):
     project = get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    godot_version = get_godot_version(
+    godot_version = get_godot_version(  #отримуємо версію годота в проекті
         project["github_token"], 
         project["github_repo"]
         )
 
-    result = create_workflow(
+    result = create_workflow(   #створюємо завдання на білд та отримуємо результат
         project["github_token"], 
         project["github_repo"],
         project["itch_username"],
         project["itch_game_id"]
         )
     
-    return{
+    return{     #вивід результатів
         "massage": "Project connected",
         "godot_version": godot_version,
         "workflow": result
