@@ -27,5 +27,45 @@ def trigger_build(github_token: str, github_repo: str): #примусово за
     workflow = repo.get_workflow("build.yml")
     workflow.create_dispatch(ref="main")
     
-    return {"message": "Build triggered!"}
+    return {"message": "Build triggered"}
 
+def get_godot_version(github_token: str, github_repo: str): #отримуємо версію годота для білду з версії проекту для надійності
+    g = Github(github_token)
+    repo = g.get_repo(github_repo)
+    
+    try:
+        file = repo.get_contents("project.godot")
+        content = file.decoded_content.decode("utf-8")
+        
+        for line in content.split("\n"):
+            if "config/features" in line:
+                version = line.split('"')[1]
+                return version
+    except:
+        pass
+    
+    return "4.2.1"
+
+def create_workflow(github_token: str, github_repo: str, itch_username: str, itch_game_id: str): #створюємо воркфлоу для білда
+    g = Github(github_token)
+    repo = g.get_repo(github_repo)
+    
+    with open("../godot-ci-platform/.github/workflows/build.yml", "r") as f:
+        workflow_content = f.read()
+    
+    try:
+        file = repo.get_contents(".github/workflows/build.yml")
+        repo.update_file(
+            path=".github/workflows/build.yml",
+            message="Update CI/CD workflow",
+            content=workflow_content,
+            sha=file.sha
+        )
+    except:
+        repo.create_file(
+            path=".github/workflows/build.yml",
+            message="Add CI/CD workflow",
+            content=workflow_content
+        )
+    
+    return {"message": "Workflow created!"}

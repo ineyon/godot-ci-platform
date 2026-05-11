@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware #для реакта безпека
 from models import Project # наш проектік
 from storage import load_projects, add_project, get_project, delete_project # функції для роботи з стореджом
-from github_service import get_builds, trigger_build
+from github_service import get_builds, trigger_build, get_godot_version, create_workflow
 
 app = FastAPI() # создаєм екземпляр фаст апішки
 
@@ -57,3 +57,27 @@ def trigger_project_build(project_id : str):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return trigger_build(project["github_token"], project["github_repo"])
+
+@app.post("api/projects/{project_id}/connect")
+def connect_project(project_id: str):
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    godot_version = get_godot_version(
+        project["github_token"], 
+        project["github_repo"]
+        )
+
+    result = create_workflow(
+        project["github_token"], 
+        project["github_repo"],
+        project["itch_username"],
+        project["itch_game_id"]
+        )
+    
+    return{
+        "massage": "Project connected",
+        "godot_version": godot_version,
+        "workflow": result
+    }
