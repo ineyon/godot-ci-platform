@@ -51,7 +51,7 @@ def get_project_builds(project_id: str):
         raise HTTPException(status_code=404, detail="Project not found")
     return get_builds(project["github_token"], project["github_repo"])
 
-@app.post("/api/projects/{project_id}/trigger-build") #трігерим білд по мейну
+@app.post("/api/projects/{project_id}/trigger-build") #трігерим білд вручну по мейну
 def trigger_project_build(project_id : str):
     project = get_project(project_id)
     if not project:

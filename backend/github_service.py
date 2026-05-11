@@ -28,3 +28,4 @@ def trigger_build(github_token: str, github_repo: str): #примусово за
     workflow.create_dispatch(ref="main")
     
     return {"message": "Build triggered!"}
+
