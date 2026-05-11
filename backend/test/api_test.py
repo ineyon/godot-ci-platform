@@ -9,7 +9,7 @@ from main import app # імпортим сюда наш бек
 client = TestClient(app) # робим клієнта
 
 def test_root():
-    response = client.get("/") # прочекуєм сторінки і записуєм в джсончік відповіді якщо все гуд
+    response = client.get("/") # прочекуєм сторінки і записуєм в джсончік відповіді якшо все гуд
     assert response.status_code == 200
     assert response.json() == {"message": "Godot CI Platform API"}
 
