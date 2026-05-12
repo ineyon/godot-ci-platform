@@ -1,24 +1,33 @@
 import { useState, useEffect } from "react"
-import ProjectList from "./components/ProjectList"
-import AddProjectForm from "./components/AddProjectForm"
-import BuildList from "./components/BuildList"
+import HomePage from "./pages/HomePage"
+import AddProjectPanel from "./components/panels/AddProjectPanel"
+import ProjectPage from "./pages/ProjectPage"
 
 const API = "http://localhost:8000"
 
 function App() {
   const [projects, setProjects] = useState([])
+  const [currentPage, setCurrentPage] = useState("home")
   const [selectedProject, setSelectedProject] = useState(null)
-  const [builds, setBuilds] = useState([])
-  const [showForm, setShowForm] = useState(false)
+  const [showAddPanel, setShowAddPanel] = useState(false)
 
   useEffect(() => {
     fetchProjects()
   }, [])
 
   const fetchProjects = async () => {
-    const res = await fetch(`${API}/api/projects`)
-    const data = await res.json()
-    setProjects(data)
+    try {
+      const res = await fetch(`${API}/api/projects`)
+      const data = await res.json()
+      setProjects(data)
+    } catch (err) {
+      console.error("Failed to fetch projects:", err)
+    }
+  }
+
+  const handleSelectProject = (project) => {
+    setSelectedProject(project)
+    setCurrentPage("project")
   }
 
   const handleAdd = async (form) => {
@@ -27,85 +36,51 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form)
     })
-    setShowForm(false)
+    setShowAddPanel(false)
     fetchProjects()
   }
 
-  const handleDelete = async (id) => {
-    await fetch(`${API}/api/projects/${id}`, { method: "DELETE" })
-    if (selectedProject?.id === id) {
-      setSelectedProject(null)
-      setBuilds([])
-    }
-    fetchProjects()
+  const handleSaveProject = async (id, form) => {
+  await fetch(`${API}/api/projects/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(form)
+  })
+  fetchProjects()
   }
 
-  const handleSelect = async (project) => {
-    setSelectedProject(project)
-    const res = await fetch(`${API}/api/projects/${project.id}/builds`)
-    const data = await res.json()
-    setBuilds(data)
-  }
-
-  const handleTriggerBuild = async () => {
-    await fetch(`${API}/api/projects/${selectedProject.id}/trigger-build`, {
-      method: "POST"
-    })
-    alert("Build Started!")
+  const handleDeleteProject = async (id) => {
+  await fetch(`${API}/api/projects/${id}`, { method: "DELETE" })
+  setCurrentPage("home")
+  setSelectedProject(null)
+  fetchProjects()
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <h1 className="text-3xl font-bold text-purple-400 mb-8">
-        Godot CI Platform
-      </h1>
+    <div>
+      {currentPage === "home" && (
+        <HomePage
+          projects={projects}
+          onSelectProject={handleSelectProject}
+          onAddProject={() => setShowAddPanel(true)}
+        />
+      )}
 
-      <div className="grid grid-cols-2 gap-8">
-        {}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Projects</h2>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded"
-            >
-              {showForm ? "Cancel" : "+ Add"}
-            </button>
-          </div>
+      {currentPage === "project" && selectedProject && (
+        <ProjectPage
+          project={selectedProject}
+          onBack={() => setCurrentPage("home")}
+          onSave={(form) => handleSaveProject(selectedProject.id, form)}
+          onDelete={() => handleDeleteProject(selectedProject.id)}
+        />
+      )}
 
-          {showForm && (
-            <div className="mb-4">
-              <AddProjectForm onAdd={handleAdd} />
-            </div>
-          )}
-
-          <ProjectList
-            projects={projects}
-            onSelect={handleSelect}
-            onDelete={handleDelete}
-          />
-        </div>
-
-        {}
-        <div>
-          {selectedProject ? (
-            <>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">{selectedProject.name}</h2>
-                <button
-                  onClick={handleTriggerBuild}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-                >
-                  Start Build
-                </button>
-              </div>
-              <BuildList builds={builds} />
-            </>
-          ) : (
-            <p className="text-gray-500">Select your project on left</p>
-          )}
-        </div>
-      </div>
+      {showAddPanel && (
+        <AddProjectPanel
+          onClose={() => setShowAddPanel(false)}
+          onAdd={handleAdd}
+        />
+      )}
     </div>
   )
 }

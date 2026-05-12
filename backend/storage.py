@@ -32,3 +32,13 @@ def delete_project(project_id: str):#ну тут удаляєм, все поня
     projects = load_projects()
     projects = [p for p in projects if p["id"] != project_id]
     save_projects(projects)
+
+def update_project(project_id: str, updated: dict):
+    projects = load_projects()
+    for i, p in enumerate(projects):
+        if p["id"] == project_id:
+            updated["id"] = project_id
+            projects[i] = updated
+            save_projects(projects)
+            return updated
+    return None

@@ -1,6 +1,5 @@
-__pycache__/
+backend/projects.json
+backend/__pycache__/
 *.pyc
 .env
-venv/
 node_modules/
-builds/

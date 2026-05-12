@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware #для реакта безпека
 from models import Project # наш проектік
-from storage import load_projects, add_project, get_project, delete_project # функції для роботи з стореджом
+from storage import load_projects, add_project, get_project, delete_project, update_project # функції для роботи з стореджом
 from github_service import get_builds, trigger_build, get_godot_version, create_workflow
+from fastapi import FastAPI, HTTPException
+from github import Github
 
 app = FastAPI() # создаєм екземпляр фаст апішки
 
@@ -81,3 +83,22 @@ def connect_project(project_id: str):
         "godot_version": godot_version,
         "workflow": result
     }
+
+@app.put("/api/projects/{project_id}")
+def edit_project(project_id: str, project: Project):
+    updated = update_project(project_id, project.model_dump())
+    if not updated:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return updated
+
+@app.post("/api/projects/validate")
+def validate_project(project: Project):
+    print(f"Token: {project.github_token[:10]}...")
+    print(f"Repo: {project.github_repo}")
+    try:
+        g = Github(project.github_token)
+        repo = g.get_repo(project.github_repo)
+        return {"valid": True, "repo_name": repo.full_name}
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid token or repository. Check your credentials.")
