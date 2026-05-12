@@ -13,7 +13,7 @@ jobs:
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v1
         with:
-          version: ${{ vars.GODOT_VERSION }}
+          version: "4.2.1"
           use-dotnet: false
 
       - name: Export Web
