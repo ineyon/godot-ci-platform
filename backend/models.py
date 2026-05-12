@@ -1,5 +1,5 @@
-from pydantic import BaseModel #автовалідатор даних з фронта на бек
-from typing import Optional
+from pydantic import BaseModel
+from typing import List, Optional
 
 class Project(BaseModel):
     id: Optional[str] = None
@@ -9,4 +9,5 @@ class Project(BaseModel):
     itch_username: str
     itch_game_id: str
     godot_version: Optional[str] = None
-    export_targets: list = ["Web", "Windows"]
+    auto_deploy: bool = False
+    export_targets: List[str] = ["Web", "Windows"]

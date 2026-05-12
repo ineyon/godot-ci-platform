@@ -1,25 +1,19 @@
-name: Build and Deploy Game
+name: Build Game
 
 on:
-  workflow_dispatch:    #запуск вручну
-    inputs:
-      godot_version:
-        description: 'Godot version'
-        default: '4.2.1'
-        required: true
+  push:
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.2.2
 
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v1
         with:
-          version: ${{ github.event.inputs.godot_version }}
+          version: ${{ vars.GODOT_VERSION }}
           use-dotnet: false
 
       - name: Export Web
@@ -32,23 +26,8 @@ jobs:
           mkdir -p builds/windows
           godot --headless --export-release "Windows Desktop" builds/windows/game.exe
 
-      - name: Upload Web artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: game-web
-          path: builds/web/
-
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: game-windows
-          path: builds/windows/
-
-      - name: Deploy to itch.io
-        uses: Oval-Tutu/publish-to-itch-with-butler@v1
-        with:
-          api-key: ${{ secrets.BUTLER_API_KEY }}
-          itch_user: ${{ secrets.ITCH_USERNAME }}
-          itch_game: ${{ secrets.ITCH_GAME_ID }}
-          channel: web
-          package: ./builds/web/
+          name: game-builds
+          path: builds/

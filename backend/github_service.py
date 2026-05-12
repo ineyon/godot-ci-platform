@@ -69,3 +69,18 @@ def create_workflow(github_token: str, github_repo: str, itch_username: str, itc
         )
     
     return {"message": "Workflow created!"}
+
+def trigger_deploy(github_token: str, github_repo: str, version: str, description: str):
+    g = Github(github_token)
+    repo = g.get_repo(github_repo)
+    
+    workflow = repo.get_workflow("deploy.yml")
+    workflow.create_dispatch(
+        ref="main",
+        inputs={
+            "version": version,
+            "description": description
+        }
+    )
+    
+    return {"message": "Deploy triggered!"}

@@ -102,3 +102,15 @@ def validate_project(project: Project):
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=400, detail="Invalid token or repository. Check your credentials.")
+    
+@app.post("/api/projects/{project_id}/deploy")
+def deploy_project(project_id: str, data: dict):
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return trigger_deploy(
+        project["github_token"],
+        project["github_repo"],
+        data.get("version", "1.0.0"),
+        data.get("description", "")
+    )

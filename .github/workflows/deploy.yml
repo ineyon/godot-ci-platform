@@ -1,0 +1,32 @@
+name: Deploy to itch.io
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Game version'
+        required: true
+      description:
+        description: 'Update description'
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: game-builds
+          path: builds/
+
+      - name: Deploy to itch.io
+        uses: Oval-Tutu/publish-to-itch-with-butler@v1
+        with:
+          api-key: ${{ secrets.BUTLER_API_KEY }}
+          itch_user: ${{ secrets.ITCH_USERNAME }}
+          itch_game: ${{ secrets.ITCH_GAME_ID }}
+          channel: web
+          package: ./builds/web/
