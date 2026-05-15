@@ -10,10 +10,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.2
 
+      - name: Get Godot version
+        id: godot_version
+        run: |
+          if [ -f .godot-version ]; then
+            VERSION=$(cat .godot-version | tr -d '[:space:]')
+            echo "Found .godot-version: $VERSION"
+          else
+            VERSION="4.6.2"
+            echo "No .godot-version found, using default: $VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Install export templates
+        run: |
+          VERSION=$(cat .godot-version | tr -d '[:space:]')
+          mkdir -p ~/.local/share/godot/export_templates/${VERSION}.stable
+          cd ~/.local/share/godot/export_templates/${VERSION}.stable
+          wget -q https://github.com/godotengine/godot/releases/download/${VERSION}-stable/Godot_v${VERSION}-stable_export_templates.tpz
+          unzip -q Godot_v${VERSION}-stable_export_templates.tpz
+          mv templates/* .
+          rm -rf templates Godot_v${VERSION}-stable_export_templates.tpz
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v1
         with:
-          version: "4.2.1"
+          version: ${{ steps.godot_version.outputs.version }}
           use-dotnet: false
 
       - name: Export Web
@@ -21,13 +41,9 @@ jobs:
           mkdir -p builds/web
           godot --headless --export-release "Web" builds/web/index.html
 
-      - name: Export Windows
-        run: |
-          mkdir -p builds/windows
-          godot --headless --export-release "Windows Desktop" builds/windows/game.exe
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: game-builds
           path: builds/
+          

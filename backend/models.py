@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
-
+ 
 class Project(BaseModel):
     id: Optional[str] = None
     name: str
@@ -8,6 +8,7 @@ class Project(BaseModel):
     github_repo: str
     itch_username: str
     itch_game_id: str
+    butler_api_key: Optional[str] = None
     godot_version: Optional[str] = None
     auto_deploy: bool = False
-    export_targets: List[str] = ["Web", "Windows"]
+    export_targets: List[str] = ["Web"]

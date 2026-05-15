@@ -4,7 +4,7 @@ def get_builds(github_token: str, github_repo: str):
     g = Github(github_token)
     repo = g.get_repo(github_repo)
     
-    runs = repo.get_workflow_runs() #отримуємо 10 останніх workflow з гіта
+    runs = repo.get_workflow_runs()
     
     result = []
     for run in list(runs)[:10]:
@@ -20,8 +20,8 @@ def get_builds(github_token: str, github_repo: str):
     
     return result
 
-def trigger_build(github_token: str, github_repo: str): #примусово запускаємо воркфлоу
-    g = Github(github_token) 
+def trigger_build(github_token: str, github_repo: str):
+    g = Github(github_token)
     repo = g.get_repo(github_repo)
     
     workflow = repo.get_workflow("build.yml")
@@ -29,7 +29,7 @@ def trigger_build(github_token: str, github_repo: str): #примусово за
     
     return {"message": "Build triggered"}
 
-def get_godot_version(github_token: str, github_repo: str): #отримуємо версію годота для білду з версії проекту для надійності
+def get_godot_version(github_token: str, github_repo: str):
     g = Github(github_token)
     repo = g.get_repo(github_repo)
     
@@ -44,31 +44,48 @@ def get_godot_version(github_token: str, github_repo: str): #отримуємо 
     except:
         pass
     
-    return "4.2.1"
+    return "4.6.2"
 
-def create_workflow(github_token: str, github_repo: str, itch_username: str, itch_game_id: str): #створюємо воркфлоу для білда
+def setup_secrets(github_token: str, github_repo: str, itch_username: str, itch_game_id: str, butler_api_key: str):
     g = Github(github_token)
     repo = g.get_repo(github_repo)
     
-    with open("../godot-ci-platform/.github/workflows/build.yml", "r") as f:
-        workflow_content = f.read()
+    repo.create_secret("ITCH_USERNAME", itch_username)
+    repo.create_secret("ITCH_GAME_ID", itch_game_id)
+    repo.create_secret("BUTLER_API_KEY", butler_api_key)
     
-    try:
-        file = repo.get_contents(".github/workflows/build.yml")
-        repo.update_file(
-            path=".github/workflows/build.yml",
-            message="Update CI/CD workflow",
-            content=workflow_content,
-            sha=file.sha
-        )
-    except:
-        repo.create_file(
-            path=".github/workflows/build.yml",
-            message="Add CI/CD workflow",
-            content=workflow_content
-        )
+    return {"message": "Secrets configured!"}
+
+def create_workflow(github_token: str, github_repo: str):
+    g = Github(github_token)
+    repo = g.get_repo(github_repo)
     
-    return {"message": "Workflow created!"}
+    with open(".github/workflows/build.yml", "r") as f:
+        build_content = f.read()
+    
+    with open(".github/workflows/deploy.yml", "r") as f:
+        deploy_content = f.read()
+    
+    for path, content in [
+        (".github/workflows/build.yml", build_content),
+        (".github/workflows/deploy.yml", deploy_content),
+    ]:
+        try:
+            file = repo.get_contents(path)
+            repo.update_file(
+                path=path,
+                message="Update CI/CD workflow",
+                content=content,
+                sha=file.sha
+            )
+        except:
+            repo.create_file(
+                path=path,
+                message="Add CI/CD workflow",
+                content=content
+            )
+    
+    return {"message": "Workflows created!"}
 
 def trigger_deploy(github_token: str, github_repo: str, version: str, description: str):
     g = Github(github_token)

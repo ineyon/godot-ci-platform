@@ -4,33 +4,56 @@ function ProjectCard({ project, onClick }) {
   return (
     <div
       onClick={() => onClick(project)}
-      className="relative cursor-pointer rounded-2xl overflow-hidden h-48 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-1 bg-white flex items-center"
+      className="relative cursor-pointer rounded-xl overflow-hidden h-40 flex items-center transition-all duration-300 group"
+      style={{
+        backgroundColor: "#161b22",
+        border: "1px solid #30363d",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = "#5a98b1"
+        e.currentTarget.style.boxShadow = "0 0 20px rgba(90, 152, 177, 0.15)"
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "#30363d"
+        e.currentTarget.style.boxShadow = "none"
+      }}
     >
-      <div className="h-full w-48 flex-shrink-0 relative overflow-hidden">
+      {/* icon left */}
+      <div className="h-full w-40 flex-shrink-0 relative overflow-hidden">
         <img
-            src={icon}
-            alt={project.name}
-            className="h-full w-full object-cover scale-125 -translate-x-10"
+          src={icon}
+          alt={project.name}
+          className="h-full w-full object-cover scale-125 -translate-x-8"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white" />
-        </div>
+        <div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(to right, transparent, #161b22)" }}
+        />
+      </div>
 
-      <div className="flex-1 px-4 flex flex-col justify-between h-full py-4 ">
+      {/* content right */}
+      <div className="flex-1 px-4 flex flex-col justify-between h-full py-4">
         <div>
-          <h3 className="font-bold text-lg text-gray-900">{project.name}</h3>
+          <h3 className="font-semibold text-base text-white">{project.name}</h3>
           {project.version && (
-            <p className="text-gray-400 text-sm">version {project.version}</p>
+            <p className="text-[#8b949e] text-xs mt-0.5">v{project.version}</p>
           )}
         </div>
         <div>
           {project.godot_version && (
-            <p className="text-gray-500 text-sm">Godot ver. {project.godot_version}</p>
+            <span
+              className="text-xs px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: "#21262d", color: "#8b949e", border: "1px solid #30363d" }}
+            >
+              Godot {project.godot_version}
+            </span>
           )}
         </div>
       </div>
 
+      {/* notification dot */}
       {project.has_notification && (
-        <div className="absolute top-3 right-3 w-3 h-3 bg-[#f04033] rounded-full animate-pulse" />
+        <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#f04033] rounded-full" />
       )}
     </div>
   )

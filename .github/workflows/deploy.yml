@@ -1,5 +1,5 @@
 name: Deploy to itch.io
-
+ 
 on:
   workflow_dispatch:
     inputs:
@@ -9,24 +9,26 @@ on:
       description:
         description: 'Update description'
         required: false
-
+ 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
-
+ 
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: game-builds
           path: builds/
-
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+ 
       - name: Deploy to itch.io
-        uses: Oval-Tutu/publish-to-itch-with-butler@v1
-        with:
-          api-key: ${{ secrets.BUTLER_API_KEY }}
-          itch_user: ${{ secrets.ITCH_USERNAME }}
-          itch_game: ${{ secrets.ITCH_GAME_ID }}
-          channel: web
-          package: ./builds/web/
+        uses: manleydev/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_API_KEY }}
+          CHANNEL: html5
+          ITCH_GAME: ${{ secrets.ITCH_GAME_ID }}
+          ITCH_USER: ${{ secrets.ITCH_USERNAME }}
+          PACKAGE: builds/web

@@ -11,6 +11,7 @@ function AddProjectPanel({ onClose, onAdd }) {
     github_repo: "",
     itch_username: "",
     itch_game_id: "",
+    butler_api_key: "",
   })
 
   const [errors, setErrors] = useState({})
@@ -23,15 +24,13 @@ function AddProjectPanel({ onClose, onAdd }) {
     { key: "github_repo", label: "GitHub Repository (user/repo)", type: "text" },
     { key: "itch_username", label: "itch.io Username", type: "text" },
     { key: "itch_game_id", label: "itch.io Game ID", type: "text" },
+    { key: "butler_api_key", label: "Butler API Key (itch.io)", type: "password" },
   ]
 
-  // фронтенд валідація
   const validateForm = () => {
     const newErrors = {}
 
-    if (!form.name.trim()) {
-      newErrors.name = "Project name is required"
-    }
+    if (!form.name.trim()) newErrors.name = "Project name is required"
 
     if (!form.github_token.trim()) {
       newErrors.github_token = "GitHub token is required"
@@ -45,23 +44,17 @@ function AddProjectPanel({ onClose, onAdd }) {
       newErrors.github_repo = "Format should be: username/repository"
     }
 
-    if (!form.itch_username.trim()) {
-      newErrors.itch_username = "itch.io username is required"
-    }
-
-    if (!form.itch_game_id.trim()) {
-      newErrors.itch_game_id = "itch.io game ID is required"
-    }
+    if (!form.itch_username.trim()) newErrors.itch_username = "itch.io username is required"
+    if (!form.itch_game_id.trim()) newErrors.itch_game_id = "itch.io game ID is required"
+    if (!form.butler_api_key.trim()) newErrors.butler_api_key = "Butler API key is required"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async () => {
-    // спочатку фронтенд валідація
     if (!validateForm()) return
 
-    // потім бекенд валідація через GitHub API
     setValidating(true)
     try {
       const res = await fetch(`${API}/api/projects/validate`, {
@@ -83,7 +76,6 @@ function AddProjectPanel({ onClose, onAdd }) {
     }
     setValidating(false)
 
-    // все ок - додаємо проєкт
     setLoading(true)
     await onAdd(form)
     setLoading(false)
@@ -91,14 +83,20 @@ function AddProjectPanel({ onClose, onAdd }) {
 
   const isBasicValid = form.name && form.github_token && form.github_repo
 
+  const inputClass = (key) =>
+    "w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors text-white " +
+    (errors[key]
+      ? "border border-[#f04033] focus:border-[#f04033]"
+      : "border border-[#30363d] focus:border-[#5a98b1]")
+
   return (
     <Panel onClose={onClose}>
-      <h2 className="text-2xl font-bold mb-6">New Project</h2>
+      <h2 className="text-xl font-bold mb-5 text-white">New Project</h2>
 
       <div className="flex flex-col gap-3">
         {fields.map(({ key, label, type }) => (
           <div key={key}>
-            <label className="text-xs text-gray-400 mb-1 block">{label}</label>
+            <label className="text-xs text-[#8b949e] mb-1 block">{label}</label>
             <input
               type={type}
               value={form[key]}
@@ -106,12 +104,8 @@ function AddProjectPanel({ onClose, onAdd }) {
                 setForm({ ...form, [key]: e.target.value })
                 if (errors[key]) setErrors({ ...errors, [key]: null })
               }}
-              className={
-                "w-full border rounded-xl px-4 py-2 text-sm outline-none transition-colors " +
-                (errors[key]
-                  ? "border-[#f04033] focus:border-[#f04033]"
-                  : "border-gray-200 focus:border-[#5a98b1]")
-              }
+              className={inputClass(key)}
+              style={{ backgroundColor: "#0d1117" }}
             />
             {errors[key] && (
               <p className="text-[#f04033] text-xs mt-1">{errors[key]}</p>
@@ -120,13 +114,12 @@ function AddProjectPanel({ onClose, onAdd }) {
         ))}
       </div>
 
-      <div className="flex justify-end gap-2 mt-6">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
+      <div className="flex justify-end gap-2 mt-5">
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button
           variant="secondary"
           onClick={handleSubmit}
           disabled={!isBasicValid || loading || validating}
-          className={!isBasicValid ? "opacity-50 cursor-not-allowed" : ""}
         >
           {validating ? "Validating..." : loading ? "Adding..." : "Add Project"}
         </Button>

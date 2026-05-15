@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware #для реакта безпека
 from models import Project # наш проектік
 from storage import load_projects, add_project, get_project, delete_project, update_project # функції для роботи з стореджом
-from github_service import get_builds, trigger_build, get_godot_version, create_workflow
+from github_service import get_builds, trigger_build, get_godot_version, create_workflow, trigger_deploy, setup_secrets
 from fastapi import FastAPI, HTTPException
 from github import Github
 
@@ -91,7 +91,7 @@ def edit_project(project_id: str, project: Project):
         raise HTTPException(status_code=404, detail="Project not found")
     return updated
 
-@app.post("/api/projects/validate")
+@app.post("/api/projects/validate") #валідація гіта
 def validate_project(project: Project):
     print(f"Token: {project.github_token[:10]}...")
     print(f"Repo: {project.github_repo}")
@@ -113,4 +113,17 @@ def deploy_project(project_id: str, data: dict):
         project["github_repo"],
         data.get("version", "1.0.0"),
         data.get("description", "")
+    )
+
+@app.post("/api/projects/{project_id}/setup-secrets")
+def setup_project_secrets(project_id: str):
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return setup_secrets(
+        project["github_token"],
+        project["github_repo"],
+        project["itch_username"],
+        project["itch_game_id"],
+        project.get("butler_api_key", "")
     )
