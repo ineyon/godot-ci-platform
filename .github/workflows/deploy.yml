@@ -1,5 +1,5 @@
 name: Deploy to itch.io
- 
+
 on:
   workflow_dispatch:
     inputs:
@@ -9,22 +9,57 @@ on:
       description:
         description: 'Update description'
         required: false
- 
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
- 
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
+
+      - name: Get Godot version
+        id: godot_version
+        run: |
+          if [ -f .godot-version ]; then
+            VERSION=$(cat .godot-version | tr -d '[:space:]')
+            echo "Found .godot-version: $VERSION"
+          else
+            VERSION="4.6.2"
+            echo "No .godot-version found, using default: $VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v1
         with:
-          name: game-builds
-          path: builds/
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
- 
-      - name: Deploy to itch.io
+          version: ${{ steps.godot_version.outputs.version }}
+          use-dotnet: false
+
+      - name: Install export templates
+        run: |
+          VERSION=${{ steps.godot_version.outputs.version }}
+          mkdir -p ~/.local/share/godot/export_templates/${VERSION}.stable
+          cd ~/.local/share/godot/export_templates/${VERSION}.stable
+          wget -q https://github.com/godotengine/godot/releases/download/${VERSION}-stable/Godot_v${VERSION}-stable_export_templates.tpz
+          unzip -q Godot_v${VERSION}-stable_export_templates.tpz
+          mv templates/* .
+          rm -rf templates Godot_v${VERSION}-stable_export_templates.tpz
+
+      - name: Export Web
+        run: |
+          mkdir -p builds/web
+          godot --headless --export-release "Web" builds/web/index.html
+
+      - name: Export Windows
+        run: |
+          mkdir -p builds/windows
+          godot --headless --export-release "Windows Desktop" builds/windows/game.exe
+
+      - name: Export Linux
+        run: |
+          mkdir -p builds/linux
+          godot --headless --export-release "Linux/X11" builds/linux/game.x86_64
+
+      - name: Deploy Web to itch.io
         uses: manleydev/butler-publish-itchio-action@master
         env:
           BUTLER_CREDENTIALS: ${{ secrets.BUTLER_API_KEY }}
@@ -32,3 +67,24 @@ jobs:
           ITCH_GAME: ${{ secrets.ITCH_GAME_ID }}
           ITCH_USER: ${{ secrets.ITCH_USERNAME }}
           PACKAGE: builds/web
+          VERSION: ${{ github.event.inputs.version }}
+
+      - name: Deploy Windows to itch.io
+        uses: manleydev/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_API_KEY }}
+          CHANNEL: windows
+          ITCH_GAME: ${{ secrets.ITCH_GAME_ID }}
+          ITCH_USER: ${{ secrets.ITCH_USERNAME }}
+          PACKAGE: builds/windows
+          VERSION: ${{ github.event.inputs.version }}
+
+      - name: Deploy Linux to itch.io
+        uses: manleydev/butler-publish-itchio-action@master
+        env:
+          BUTLER_CREDENTIALS: ${{ secrets.BUTLER_API_KEY }}
+          CHANNEL: linux
+          ITCH_GAME: ${{ secrets.ITCH_GAME_ID }}
+          ITCH_USER: ${{ secrets.ITCH_USERNAME }}
+          PACKAGE: builds/linux
+          VERSION: ${{ github.event.inputs.version }}

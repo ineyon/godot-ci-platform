@@ -1,9 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware #для реакта безпека
 from models import Project # наш проектік
 from storage import load_projects, add_project, get_project, delete_project, update_project # функції для роботи з стореджом
-from github_service import get_builds, trigger_build, get_godot_version, create_workflow, trigger_deploy, setup_secrets
-from fastapi import FastAPI, HTTPException
+from github_service import get_builds, trigger_build, get_godot_version, create_workflow, trigger_deploy, setup_secrets, get_commits
+import httpx
 from github import Github
 
 app = FastAPI() # создаєм екземпляр фаст апішки
@@ -60,7 +60,7 @@ def trigger_project_build(project_id : str):
         raise HTTPException(status_code=404, detail="Project not found")
     return trigger_build(project["github_token"], project["github_repo"])
 
-@app.post("api/projects/{project_id}/connect")  #підключаємо проект гри з репо гіта
+@app.post("/api/projects/{project_id}/connect")  #підключаємо проект гри з репо гіта
 def connect_project(project_id: str):
     project = get_project(project_id)
     if not project:
@@ -73,9 +73,7 @@ def connect_project(project_id: str):
 
     result = create_workflow(   #створюємо завдання на білд та отримуємо результат
         project["github_token"], 
-        project["github_repo"],
-        project["itch_username"],
-        project["itch_game_id"]
+        project["github_repo"]
         )
     
     return{     #вивід результатів
@@ -115,7 +113,72 @@ def deploy_project(project_id: str, data: dict):
         data.get("description", "")
     )
 
-@app.post("/api/projects/{project_id}/setup-secrets")
+
+@app.get("/api/projects/{project_id}/commits")  # останні коміти з репо гри
+def get_project_commits(project_id: str, limit: int = 20):
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return get_commits(project["github_token"], project["github_repo"], limit)
+
+
+@app.get("/api/projects/{project_id}/itch-stats")  # статистика з itch.io через butler API
+async def get_itch_stats(project_id: str):
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    butler_api_key = project.get("butler_api_key", "")
+    if not butler_api_key:
+        raise HTTPException(status_code=400, detail="Butler API key not set")
+
+    itch_username = project.get("itch_username", "")
+    itch_game_id = project.get("itch_game_id", "")
+
+    # Butler API — отримуємо інфо про гру
+    async with httpx.AsyncClient() as client:
+        try:
+            # загальна інфо про гру
+            game_resp = await client.get(
+                f"https://api.itch.io/games/{itch_game_id}",
+                headers={"Authorization": f"Bearer {butler_api_key}"}
+            )
+            if game_resp.status_code != 200:
+                raise HTTPException(status_code=502, detail="itch.io API error")
+
+            game_data = game_resp.json().get("game", {})
+
+            # uploads (платформи і файли)
+            uploads_resp = await client.get(
+                f"https://api.itch.io/games/{itch_game_id}/uploads",
+                headers={"Authorization": f"Bearer {butler_api_key}"}
+            )
+            uploads = uploads_resp.json().get("uploads", []) if uploads_resp.status_code == 200 else []
+
+            return {
+                "title": game_data.get("title"),
+                "url": game_data.get("url"),
+                "views_count": game_data.get("views_count", 0),
+                "downloads_count": game_data.get("downloads_count", 0),
+                "purchases_count": game_data.get("purchases_count", 0),
+                "published": game_data.get("published", False),
+                "created_at": game_data.get("created_at"),
+                "cover_url": game_data.get("cover_url"),
+                "uploads": [
+                    {
+                        "id": u.get("id"),
+                        "filename": u.get("filename"),
+                        "size": u.get("size"),
+                        "type": u.get("type"),
+                        "platforms": u.get("platforms", {}),
+                        "created_at": u.get("created_at"),
+                    }
+                    for u in uploads
+                ]
+            }
+
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=502, detail=f"Network error: {str(e)}")
 def setup_project_secrets(project_id: str):
     project = get_project(project_id)
     if not project:

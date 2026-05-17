@@ -21,29 +21,40 @@ jobs:
             echo "No .godot-version found, using default: $VERSION"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-      - name: Install export templates
-        run: |
-          VERSION=$(cat .godot-version | tr -d '[:space:]')
-          mkdir -p ~/.local/share/godot/export_templates/${VERSION}.stable
-          cd ~/.local/share/godot/export_templates/${VERSION}.stable
-          wget -q https://github.com/godotengine/godot/releases/download/${VERSION}-stable/Godot_v${VERSION}-stable_export_templates.tpz
-          unzip -q Godot_v${VERSION}-stable_export_templates.tpz
-          mv templates/* .
-          rm -rf templates Godot_v${VERSION}-stable_export_templates.tpz
+
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v1
         with:
           version: ${{ steps.godot_version.outputs.version }}
           use-dotnet: false
 
+      - name: Install export templates
+        run: |
+          VERSION=${{ steps.godot_version.outputs.version }}
+          mkdir -p ~/.local/share/godot/export_templates/${VERSION}.stable
+          cd ~/.local/share/godot/export_templates/${VERSION}.stable
+          wget -q https://github.com/godotengine/godot/releases/download/${VERSION}-stable/Godot_v${VERSION}-stable_export_templates.tpz
+          unzip -q Godot_v${VERSION}-stable_export_templates.tpz
+          mv templates/* .
+          rm -rf templates Godot_v${VERSION}-stable_export_templates.tpz
+
       - name: Export Web
         run: |
           mkdir -p builds/web
           godot --headless --export-release "Web" builds/web/index.html
+
+      - name: Export Windows
+        run: |
+          mkdir -p builds/windows
+          godot --headless --export-release "Windows Desktop" builds/windows/game.exe
+
+      - name: Export Linux
+        run: |
+          mkdir -p builds/linux
+          godot --headless --export-release "Linux/X11" builds/linux/game.x86_64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: game-builds
           path: builds/
-          

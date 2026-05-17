@@ -87,6 +87,23 @@ def create_workflow(github_token: str, github_repo: str):
     
     return {"message": "Workflows created!"}
 
+def get_commits(github_token: str, github_repo: str, limit: int = 20):
+    g = Github(github_token)
+    repo = g.get_repo(github_repo)
+
+    result = []
+    for commit in list(repo.get_commits())[:limit]:
+        result.append({
+            "sha": commit.sha[:7],
+            "message": commit.commit.message.split("\n")[0],  # тільки перший рядок
+            "author": commit.commit.author.name,
+            "date": str(commit.commit.author.date),
+            "url": commit.html_url
+        })
+
+    return result
+
+
 def trigger_deploy(github_token: str, github_repo: str, version: str, description: str):
     g = Github(github_token)
     repo = g.get_repo(github_repo)

@@ -1,7 +1,23 @@
+import { useEffect, useRef } from "react"
 import ProjectCard from "../components/ProjectCard"
 import Button from "../components/ui/Button"
 
-function HomePage({ projects, onSelectProject, onAddProject }) {
+const API = "http://localhost:8000"
+
+function HomePage({ projects, onSelectProject, onAddProject, onRefresh }) {
+  const prevBuildsRef = useRef({})
+
+  // автооновлення кожні 30 сек
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (onRefresh) onRefresh()
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [onRefresh])
+
+  // перевіряємо нові білди для кожного проєкту
+  // (логіка нотифікацій живе в App.jsx через lastBuildId)
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#010409" }}>
       {/* top gradient line */}
