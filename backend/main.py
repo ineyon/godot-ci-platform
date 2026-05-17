@@ -122,59 +122,75 @@ def get_project_commits(project_id: str, limit: int = 20):
     return get_commits(project["github_token"], project["github_repo"], limit)
 
 
-@app.get("/api/projects/{project_id}/itch-stats")  # статистика з itch.io через butler API
+@app.get("/api/projects/{project_id}/itch-stats")
 async def get_itch_stats(project_id: str):
     project = get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    butler_api_key = project.get("butler_api_key", "")
-    if not butler_api_key:
-        raise HTTPException(status_code=400, detail="Butler API key not set")
+    # butler_api_key — це і є itch.io API key, той самий що в настройках
+    api_key = project.get("butler_api_key", "")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key not set")
 
     itch_username = project.get("itch_username", "")
     itch_game_id = project.get("itch_game_id", "")
 
-    # Butler API — отримуємо інфо про гру
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            # загальна інфо про гру
-            game_resp = await client.get(
-                f"https://api.itch.io/games/{itch_game_id}",
-                headers={"Authorization": f"Bearer {butler_api_key}"}
-            )
-            if game_resp.status_code != 200:
-                raise HTTPException(status_code=502, detail="itch.io API error")
+            headers = {"Authorization": f"Bearer {api_key}"}
 
-            game_data = game_resp.json().get("game", {})
-
-            # uploads (платформи і файли)
-            uploads_resp = await client.get(
-                f"https://api.itch.io/games/{itch_game_id}/uploads",
-                headers={"Authorization": f"Bearer {butler_api_key}"}
+            # 1. Інфо про гру — через itch.io API
+            # game_id може бути числовим id або slug (user/game)
+            # спробуємо через my-games спочатку
+            my_games_resp = await client.get(
+                "https://api.itch.io/profile/games",
+                headers=headers
             )
-            uploads = uploads_resp.json().get("uploads", []) if uploads_resp.status_code == 200 else []
+
+            game_data = {}
+            uploads = []
+
+            if my_games_resp.status_code == 200:
+                games = my_games_resp.json().get("games", [])
+                # знаходимо нашу гру по slug або id
+                for g in games:
+                    if (str(g.get("id")) == str(itch_game_id) or
+                        g.get("url", "").rstrip("/").endswith(f"/{itch_game_id}")):
+                        game_data = g
+                        break
+
+                if game_data:
+                    # 2. Uploads для знайденої гри
+                    game_numeric_id = game_data.get("id")
+                    uploads_resp = await client.get(
+                        f"https://api.itch.io/games/{game_numeric_id}/uploads",
+                        headers=headers
+                    )
+                    if uploads_resp.status_code == 200:
+                        raw = uploads_resp.json().get("uploads", [])
+                        uploads = [
+                            {
+                                "id": u.get("id"),
+                                "filename": u.get("filename"),
+                                "size": u.get("size"),
+                                "type": u.get("type"),
+                                "platforms": u.get("platforms", {}),
+                                "created_at": u.get("created_at"),
+                            }
+                            for u in raw
+                        ]
 
             return {
                 "title": game_data.get("title"),
-                "url": game_data.get("url"),
-                "views_count": game_data.get("views_count", 0),
-                "downloads_count": game_data.get("downloads_count", 0),
-                "purchases_count": game_data.get("purchases_count", 0),
-                "published": game_data.get("published", False),
-                "created_at": game_data.get("created_at"),
+                "url": game_data.get("url") or f"https://{itch_username}.itch.io/{itch_game_id}",
+                "views_count": game_data.get("views_count"),
+                "downloads_count": game_data.get("downloads_count"),
+                "purchases_count": game_data.get("purchases_count"),
+                "published": game_data.get("published"),
+                "min_price": game_data.get("min_price"),
                 "cover_url": game_data.get("cover_url"),
-                "uploads": [
-                    {
-                        "id": u.get("id"),
-                        "filename": u.get("filename"),
-                        "size": u.get("size"),
-                        "type": u.get("type"),
-                        "platforms": u.get("platforms", {}),
-                        "created_at": u.get("created_at"),
-                    }
-                    for u in uploads
-                ]
+                "uploads": uploads,
             }
 
         except httpx.RequestError as e:
