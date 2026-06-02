@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware #для реакта безпека
 from models import Project # наш проектік
 from storage import load_projects, add_project, get_project, delete_project, update_project # функції для роботи з стореджом
@@ -60,29 +61,38 @@ def trigger_project_build(project_id : str):
         raise HTTPException(status_code=404, detail="Project not found")
     return trigger_build(project["github_token"], project["github_repo"])
 
-@app.post("/api/projects/{project_id}/connect")  #підключаємо проект гри з репо гіта
-def connect_project(project_id: str):
+@app.get("/api/projects/{project_id}/godot-version") # читаємо версію з project.godot і зберігаємо — викликається автоматично при відкритті ProjectPage
+def fetch_godot_version(project_id: str):
     project = get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
-    godot_version = get_godot_version(  #отримуємо версію годота в проекті
-        project["github_token"], 
-        project["github_repo"]
-        )
+    version = get_godot_version(project["github_token"], project["github_repo"])
+    update_project(project_id, {"godot_version": version})
+    return {"godot_version": version}
 
-    result = create_workflow(   #створюємо завдання на білд та отримуємо результат
-        project["github_token"], 
-        project["github_repo"]
-        )
-    
-    return{     #вивід результатів
-        "massage": "Project connected",
-        "godot_version": godot_version,
-        "workflow": result
-    }
+@app.post("/api/projects/{project_id}/push-workflows") # пушимо build.yml і deploy.yml в репо гри, якщо вміст однаковий — пропускаємо
+def push_project_workflows(project_id: str):
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return create_workflow(project["github_token"], project["github_repo"])
 
-@app.put("/api/projects/{project_id}")
+@app.post("/api/projects/{project_id}/setup-secrets") # пушимо itch/github секрети з налаштувань прямо в репо гри
+def push_project_secrets(project_id: str):
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if not project.get("butler_api_key"):
+        raise HTTPException(status_code=400, detail="Butler API Key is not set")
+    return setup_secrets(
+        project["github_token"],
+        project["github_repo"],
+        project["itch_username"],
+        project["itch_game_id"],
+        project["butler_api_key"]
+    )
+
+@app.put("/api/projects/{project_id}") # оновлюємо налаштування проекту, мержить з існуючими даними щоб нічого не загубить
 def edit_project(project_id: str, project: Project):
     updated = update_project(project_id, project.model_dump())
     if not updated:
@@ -101,7 +111,7 @@ def validate_project(project: Project):
         print(f"Error: {e}")
         raise HTTPException(status_code=400, detail="Invalid token or repository. Check your credentials.")
     
-@app.post("/api/projects/{project_id}/deploy")
+@app.post("/api/projects/{project_id}/deploy") # трігер деплою на itch.io через GitHub Actions, version і description беремо з body
 def deploy_project(project_id: str, data: dict):
     project = get_project(project_id)
     if not project:
@@ -121,6 +131,29 @@ def get_project_commits(project_id: str, limit: int = 20):
         raise HTTPException(status_code=404, detail="Project not found")
     return get_commits(project["github_token"], project["github_repo"], limit)
 
+
+@app.get("/api/projects/{project_id}/uploads/{upload_id}/download") # редіректить браузер на тимчасовий лінк скачування з itch.io
+async def download_upload(project_id: str, upload_id: int):
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    api_key = project.get("butler_api_key", "")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Butler API Key not set")
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+        resp = await client.get(
+            f"https://api.itch.io/uploads/{upload_id}/download",
+            headers={"Authorization": f"Bearer {api_key}"}
+        )
+        if resp.status_code in (301, 302, 303, 307, 308):
+            url = resp.headers.get("location")
+            if url:
+                return RedirectResponse(url)
+        if resp.status_code == 200:
+            url = resp.json().get("url")
+            if url:
+                return RedirectResponse(url)
+        raise HTTPException(status_code=502, detail=f"itch.io {resp.status_code}: {resp.text[:200]}")
 
 @app.get("/api/projects/{project_id}/itch-stats")
 async def get_itch_stats(project_id: str):
@@ -195,14 +228,3 @@ async def get_itch_stats(project_id: str):
 
         except httpx.RequestError as e:
             raise HTTPException(status_code=502, detail=f"Network error: {str(e)}")
-def setup_project_secrets(project_id: str):
-    project = get_project(project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return setup_secrets(
-        project["github_token"],
-        project["github_repo"],
-        project["itch_username"],
-        project["itch_game_id"],
-        project.get("butler_api_key", "")
-    )

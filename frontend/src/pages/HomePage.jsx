@@ -20,18 +20,15 @@ function HomePage({ projects, onSelectProject, onAddProject, onRefresh }) {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#010409" }}>
-      {/* top gradient line */}
-      <div
-        className="h-0.5 w-full"
-        style={{ background: "linear-gradient(to right, #f04033, #5a98b1)" }}
-      />
-
-      {/* header */}
-      <div
-        className="px-10 py-5 flex items-center justify-between"
-        style={{ borderBottom: "1px solid #21262d" }}
-      >
-        <h1 className="font-bold text-lg tracking-tight text-white">// Godot CI</h1>
+      {/* sticky header */}
+      <div className="sticky top-0 z-10" style={{ backgroundColor: "#010409" }}>
+        <div className="h-0.5 w-full" style={{ background: "linear-gradient(to right, #f04033, #5a98b1)" }} />
+        <div className="px-10 py-5 flex items-center justify-between" style={{ borderBottom: "1px solid #21262d" }}>
+          <h1 className="font-bold text-lg tracking-tight text-white">// Godot CI</h1>
+          {projects.length > 0 && (
+            <Button onClick={onAddProject}>Add Project</Button>
+          )}
+        </div>
       </div>
 
       {/* content */}
@@ -60,16 +57,6 @@ function HomePage({ projects, onSelectProject, onAddProject, onRefresh }) {
         )}
       </div>
 
-      {/* add button */}
-      {projects.length > 0 && (
-        <button
-          onClick={onAddProject}
-          className="fixed bottom-8 right-8 w-11 h-11 rounded-xl text-white text-xl shadow-lg transition-all duration-200 hover:scale-110 flex items-center justify-center"
-          style={{ backgroundColor: "#5a98b1" }}
-        >
-          +
-        </button>
-      )}
     </div>
   )
 }

@@ -34,36 +34,25 @@ function ItchIcon() {
   )
 }
 
-function StatusBadge({ conclusion, status }) {
-  const val = conclusion || status
-  const styles = {
-    success: "bg-[#5a98b1]/10 text-[#5a98b1] border border-[#5a98b1]/30",
-    failure: "bg-[#f04033]/10 text-[#f04033] border border-[#f04033]/30",
-    in_progress: "bg-yellow-900/20 text-yellow-400 border border-yellow-800/30",
-  }
-  const labels = { success: "Success", failure: "Failure", in_progress: "Running" }
-  return (
-    <span className={"text-xs px-2 py-0.5 rounded-full " + (styles[val] || "bg-[#21262d] text-[#8b949e] border border-[#30363d]")}>
-      {labels[val] || val || "Pending"}
-    </span>
-  )
-}
 
-function ProjectPage({ project, onBack, onSave, onDelete }) {
+function ProjectPage({ project, onBack, onSave, onDelete, onRefresh }) {
   const [showSettings, setShowSettings] = useState(false)
   const [showUpdate, setShowUpdate] = useState(false)
   const [builds, setBuilds] = useState([])
-  const [lastPush, setLastPush] = useState(null)
   const [loadingBuilds, setLoadingBuilds] = useState(true)
   const [itchStats, setItchStats] = useState(null)
   const [loadingStats, setLoadingStats] = useState(true)
+  const [lastCommit, setLastCommit] = useState(null)
 
   useEffect(() => {
     fetchBuilds()
     fetchItchStats()
+    fetchLastCommit()
+    fetchGodotVersion()
     const interval = setInterval(() => {
       fetchBuilds()
       fetchItchStats()
+      fetchLastCommit()
     }, 30000)
     return () => clearInterval(interval)
   }, [])
@@ -74,11 +63,27 @@ function ProjectPage({ project, onBack, onSave, onDelete }) {
       const res = await fetch(`${API}/api/projects/${project.id}/builds`)
       const data = await res.json()
       setBuilds(data)
-      if (data.length > 0) setLastPush(data[0])
     } catch {
       console.error("Failed to fetch builds")
     }
     setLoadingBuilds(false)
+  }
+
+  const fetchGodotVersion = async () => {
+    try {
+      const res = await fetch(`${API}/api/projects/${project.id}/godot-version`)
+      if (res.ok) onRefresh?.() // підтягуємо оновлений проект з godot_version в App.jsx
+    } catch {}
+  }
+
+  const fetchLastCommit = async () => {
+    try {
+      const res = await fetch(`${API}/api/projects/${project.id}/commits?limit=1`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.length > 0) setLastCommit(data[0])
+      }
+    } catch {}
   }
 
   const fetchItchStats = async () => {
@@ -97,13 +102,17 @@ function ProjectPage({ project, onBack, onSave, onDelete }) {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#010409" }}>
-      {/* top line */}
-      <div className="h-0.5 w-full" style={{ background: "linear-gradient(to right, #f04033, #5a98b1)" }} />
-
-      {/* header */}
-      <div className="px-10 py-5 flex items-center justify-between" style={{ borderBottom: "1px solid #21262d" }}>
-        <h1 className="font-bold text-lg tracking-tight text-white">// Godot CI</h1>
-        <Button variant="ghost" onClick={onBack}>All Projects</Button>
+      {/* sticky header */}
+      <div className="sticky top-0 z-10" style={{ backgroundColor: "#010409" }}>
+        <div className="h-0.5 w-full" style={{ background: "linear-gradient(to right, #f04033, #5a98b1)" }} />
+        <div className="px-10 py-5 flex items-center justify-between" style={{ borderBottom: "1px solid #21262d" }}>
+          <h1 className="font-bold text-lg tracking-tight text-white">// Godot CI</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => setShowUpdate(true)}>Update</Button>
+            <Button variant="ghost" onClick={() => setShowSettings(true)}>Settings</Button>
+            <Button variant="ghost" onClick={onBack}>All Projects</Button>
+          </div>
+        </div>
       </div>
 
       {/* content */}
@@ -116,14 +125,19 @@ function ProjectPage({ project, onBack, onSave, onDelete }) {
           <div className="rounded-xl p-5 flex flex-col gap-3" style={cardStyle}>
             <div className="flex items-center gap-3">
               <img
-                src={project.icon_url || "/images/godot-default.png"}
+                src={itchStats?.cover_url || project.icon_url || "/images/godot-default.png"}
                 alt={project.name}
-                className="w-12 h-12 object-cover rounded-lg"
+                className="w-14 h-14 object-cover rounded-lg"
               />
-              <div>
+              <div className="flex flex-col gap-0.5">
                 <h2 className="font-semibold text-lg text-white">{project.name}</h2>
                 {project.godot_version && (
                   <span className="text-xs text-[#8b949e]">Godot {project.godot_version}</span>
+                )}
+                {itchStats?.published != null && (
+                  <span className="text-xs" style={{ color: itchStats.published ? "#56d364" : "#8b949e" }}>
+                    {itchStats.published ? "Published" : "Unpublished"}
+                  </span>
                 )}
               </div>
             </div>
@@ -152,17 +166,27 @@ function ProjectPage({ project, onBack, onSave, onDelete }) {
             </div>
           </div>
 
-          {/* last push */}
+          {/* last commit */}
           <div className="rounded-xl p-5" style={cardStyle}>
-            <p className="text-xs text-[#8b949e] mb-3 uppercase tracking-wider">Last Push</p>
-            {lastPush ? (
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-white truncate">{lastPush.commit}</p>
-                <p className="text-xs text-[#8b949e]">{new Date(lastPush.created_at).toLocaleString()}</p>
-                <StatusBadge conclusion={lastPush.conclusion} status={lastPush.status} />
-              </div>
+            <p className="text-xs text-[#8b949e] mb-3 uppercase tracking-wider">Last Commit</p>
+            {lastCommit ? (
+              <a
+                href={lastCommit.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-col gap-1.5 group"
+              >
+                <p className="text-sm font-medium text-white group-hover:text-[#5a98b1] transition-colors line-clamp-2">
+                  {lastCommit.message}
+                </p>
+                <div className="flex items-center justify-between mt-0.5">
+                  <span className="text-xs text-[#8b949e]">{lastCommit.author}</span>
+                  <span className="text-xs font-mono text-[#8b949e]">{lastCommit.sha}</span>
+                </div>
+                <p className="text-xs text-[#8b949e]">{new Date(lastCommit.date).toLocaleString()}</p>
+              </a>
             ) : (
-              <p className="text-sm text-[#8b949e]">No data yet</p>
+              <p className="text-sm text-[#8b949e]">No commits yet</p>
             )}
           </div>
 
@@ -203,16 +227,10 @@ function ProjectPage({ project, onBack, onSave, onDelete }) {
           {itchStats?.uploads?.length > 0 && (
             <div className="rounded-xl p-5" style={cardStyle}>
               <p className="text-xs text-[#8b949e] mb-4 uppercase tracking-wider">Version History</p>
-              <VersionHistoryList uploads={itchStats.uploads} />
+              <VersionHistoryList uploads={itchStats.uploads} projectId={project.id} />
             </div>
           )}
         </div>
-      </div>
-
-      {/* кнопки внизу */}
-      <div className="fixed bottom-8 right-8 flex gap-2">
-        <Button variant="secondary" onClick={() => setShowUpdate(true)}>Update</Button>
-        <Button variant="ghost" onClick={() => setShowSettings(true)}>Settings</Button>
       </div>
 
       {showSettings && (
@@ -221,6 +239,7 @@ function ProjectPage({ project, onBack, onSave, onDelete }) {
           onClose={() => setShowSettings(false)}
           onSave={(form) => { onSave(form); setShowSettings(false) }}
           onDelete={() => { onDelete(); setShowSettings(false) }}
+          onConnect={onRefresh}
         />
       )}
 

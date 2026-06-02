@@ -3,8 +3,12 @@ import Panel from "../ui/Panel"
 import Button from "../ui/Button"
 import ConfirmDialog from "../ui/ConfirmDialog"
 
+const API = "http://localhost:8000"
+
 function SettingsPanel({ project, onClose, onSave, onDelete }) {
   const [showConfirm, setShowConfirm] = useState(false)
+  const [secretsStatus, setSecretsStatus] = useState(null)    // null | "loading" | "ok" | "error"
+  const [workflowsStatus, setWorkflowsStatus] = useState(null) // null | "loading" | "ok" | "error"
 
   const [form, setForm] = useState({
     name: project.name || "",
@@ -14,6 +18,26 @@ function SettingsPanel({ project, onClose, onSave, onDelete }) {
     itch_game_id: project.itch_game_id || "",
     butler_api_key: project.butler_api_key || "",
   })
+
+  const pushWorkflows = async () => {
+    setWorkflowsStatus("loading")
+    try {
+      const res = await fetch(`${API}/api/projects/${project.id}/push-workflows`, { method: "POST" })
+      setWorkflowsStatus(res.ok ? "ok" : "error")
+    } catch {
+      setWorkflowsStatus("error")
+    }
+  }
+
+  const pushSecrets = async () => {
+    setSecretsStatus("loading")
+    try {
+      const res = await fetch(`${API}/api/projects/${project.id}/setup-secrets`, { method: "POST" })
+      setSecretsStatus(res.ok ? "ok" : "error")
+    } catch {
+      setSecretsStatus("error")
+    }
+  }
 
   const fields = [
     { key: "name", label: "Project Name", type: "text" },
@@ -43,7 +67,24 @@ function SettingsPanel({ project, onClose, onSave, onDelete }) {
         ))}
       </div>
 
-      <div className="flex justify-between items-center mt-5">
+      <div className="flex flex-col gap-2 mt-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" onClick={pushWorkflows} disabled={workflowsStatus === "loading"}>
+            {workflowsStatus === "loading" ? "Pushing..." : "Push Workflows to GitHub"}
+          </Button>
+          {workflowsStatus === "ok" && <span className="text-xs text-[#5a98b1]">Workflows pushed</span>}
+          {workflowsStatus === "error" && <span className="text-xs text-[#f04033]">Failed to push workflows</span>}
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" onClick={pushSecrets} disabled={secretsStatus === "loading"}>
+            {secretsStatus === "loading" ? "Pushing..." : "Push Secrets to GitHub"}
+          </Button>
+          {secretsStatus === "ok" && <span className="text-xs text-[#5a98b1]">Secrets updated</span>}
+          {secretsStatus === "error" && <span className="text-xs text-[#f04033]">Failed to push secrets</span>}
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center mt-3">
         <button
           onClick={() => setShowConfirm(true)}
           className="text-red-400 hover:text-red-300 text-sm transition-colors"

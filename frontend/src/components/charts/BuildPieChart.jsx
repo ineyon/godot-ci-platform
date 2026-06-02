@@ -2,6 +2,7 @@ function BuildPieChart({ builds = [] }) {
   const success = builds.filter(b => b.conclusion === "success").length
   const failed = builds.filter(b => b.conclusion === "failure").length
   const total = builds.length
+  const counted = success + failed
 
   if (total === 0) {
     return (
@@ -15,8 +16,9 @@ function BuildPieChart({ builds = [] }) {
   const cx = 60
   const cy = 60
   const circ = 2 * Math.PI * r
-  const successDash = (success / total) * circ
-  const failedDash = (failed / total) * circ
+
+  const successLen = counted > 0 ? (success / counted) * circ : 0
+  const successDeg = counted > 0 ? (success / counted) * 360 : 0
 
   return (
     <div className="flex items-center gap-6">
@@ -28,9 +30,8 @@ function BuildPieChart({ builds = [] }) {
             fill="none"
             stroke="#5a98b1"
             strokeWidth="16"
-            strokeDasharray={`${successDash} ${circ}`}
-            strokeDashoffset={circ / 4}
-            style={{ transform: "rotate(-90deg)", transformOrigin: "60px 60px" }}
+            strokeDasharray={`${successLen} ${circ}`}
+            style={{ transform: "rotate(-90deg)", transformOrigin: `${cx}px ${cy}px` }}
           />
         )}
         {failed > 0 && (
@@ -39,9 +40,8 @@ function BuildPieChart({ builds = [] }) {
             fill="none"
             stroke="#f04033"
             strokeWidth="16"
-            strokeDasharray={`${failedDash} ${circ}`}
-            strokeDashoffset={circ / 4 - successDash}
-            style={{ transform: "rotate(-90deg)", transformOrigin: "60px 60px" }}
+            strokeDasharray={`${circ - successLen} ${circ}`}
+            style={{ transform: `rotate(${-90 + successDeg}deg)`, transformOrigin: `${cx}px ${cy}px` }}
           />
         )}
         <text x={cx} y={cy + 5} textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">
@@ -56,10 +56,6 @@ function BuildPieChart({ builds = [] }) {
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-[#f04033]" />
           <span className="text-[#8b949e] text-xs">Failed: <span className="text-white">{failed}</span></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#21262d]" />
-          <span className="text-[#8b949e] text-xs">Total: <span className="text-white">{total}</span></span>
         </div>
       </div>
     </div>

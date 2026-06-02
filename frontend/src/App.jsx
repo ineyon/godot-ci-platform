@@ -30,12 +30,11 @@ function App() {
           const builds = await res.json()
           if (builds.length === 0) continue
           const latestId = builds[0].id
-          if (lastBuildIds.current[project.id] && lastBuildIds.current[project.id] !== latestId) {
+          // якщо айді змінився відносно того що пам'ятаємо — показуємо крапку
+          if (lastBuildIds.current[project.id] !== undefined && lastBuildIds.current[project.id] !== latestId) {
             newNotifications[project.id] = true
           }
-          if (!lastBuildIds.current[project.id]) {
-            lastBuildIds.current[project.id] = latestId
-          }
+          lastBuildIds.current[project.id] = latestId // завжди оновлюємо, інакше нотифікація висіла б назавжди
         } catch {
           // ігноруємо
         }
@@ -51,6 +50,11 @@ function App() {
       const res = await fetch(`${API}/api/projects`)
       const data = await res.json()
       setProjects(data)
+      // якщо зараз відкритий проект — оновлюємо і його щоб підтягнулись нові дані (типу godot_version після connect)
+      setSelectedProject(prev => {
+        if (!prev) return prev
+        return data.find(p => p.id === prev.id) || prev
+      })
     } catch (err) {
       console.error("Failed to fetch projects:", err)
     }
@@ -112,6 +116,7 @@ function App() {
           onBack={() => setCurrentPage("home")}
           onSave={(form) => handleSaveProject(selectedProject.id, form)}
           onDelete={() => handleDeleteProject(selectedProject.id)}
+          onRefresh={fetchProjects}
         />
       )}
 

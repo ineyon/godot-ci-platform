@@ -18,6 +18,19 @@ function formatBytes(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB"
 }
 
+function detectPlatform(upload) {
+  // спочатку дивимось на platforms об'єкт (може бути {} для butler-завантажень)
+  const keys = Object.keys(upload.platforms || {}).filter(k => upload.platforms[k])
+  if (keys.length > 0) return keys[0]
+  // якщо platforms порожній — пробуємо вгадати по імені файлу
+  const name = (upload.filename || "").toLowerCase()
+  if (name.includes("win") || name.endsWith(".exe")) return "windows"
+  if (name.includes("linux") || name.endsWith(".x86_64")) return "linux"
+  if (name.includes("mac") || name.includes("osx")) return "osx"
+  if (name.includes("web") || name.includes("html")) return "html5"
+  return upload.type || "html5"
+}
+
 function PlatformChart({ uploads = [] }) {
   if (!uploads || uploads.length === 0) {
     return (
@@ -32,10 +45,7 @@ function PlatformChart({ uploads = [] }) {
   return (
     <div className="flex flex-col gap-3">
       {uploads.map((upload) => {
-        // визначаємо платформу з об'єкту platforms або типу
-        const platform = upload.platforms
-          ? Object.keys(upload.platforms)[0] || "html5"
-          : upload.type || "html5"
+        const platform = detectPlatform(upload)
         const color = PLATFORM_COLORS[platform] || "#8b949e"
         const label = PLATFORM_LABELS[platform] || platform
         const pct = ((upload.size || 0) / maxSize) * 100

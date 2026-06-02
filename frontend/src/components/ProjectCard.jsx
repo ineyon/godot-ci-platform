@@ -1,14 +1,29 @@
+import { useState, useEffect } from "react"
+
+const API = "http://localhost:8000"
+
 function ProjectCard({ project, onClick }) {
-  const icon = project.icon_url || "/images/godot-default.png"
+  const [coverUrl, setCoverUrl] = useState(null)
+  const [downloads, setDownloads] = useState(null)
+
+  useEffect(() => {
+    fetch(`${API}/api/projects/${project.id}/itch-stats`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        if (data.cover_url) setCoverUrl(data.cover_url)
+        if (data.downloads_count != null) setDownloads(data.downloads_count)
+      })
+      .catch(() => {})
+  }, [project.id])
+
+  const icon = coverUrl || project.icon_url || "/images/godot-default.png"
 
   return (
     <div
       onClick={() => onClick(project)}
       className="relative cursor-pointer rounded-xl overflow-hidden h-40 flex items-center transition-all duration-300 group"
-      style={{
-        backgroundColor: "#161b22",
-        border: "1px solid #30363d",
-      }}
+      style={{ backgroundColor: "#161b22", border: "1px solid #30363d" }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "#5a98b1"
         e.currentTarget.style.boxShadow = "0 0 20px rgba(90, 152, 177, 0.15)"
@@ -33,19 +48,25 @@ function ProjectCard({ project, onClick }) {
 
       {/* content right */}
       <div className="flex-1 px-4 flex flex-col justify-between h-full py-4">
-        <div>
+        <div className="flex flex-col gap-1">
           <h3 className="font-semibold text-base text-white">{project.name}</h3>
-          {project.version && (
-            <p className="text-[#8b949e] text-xs mt-0.5">v{project.version}</p>
-          )}
+          <p className="text-[#8b949e] text-xs truncate">{project.github_repo}</p>
         </div>
-        <div>
+        <div className="flex items-center gap-2 flex-wrap">
           {project.godot_version && (
             <span
               className="text-xs px-2 py-0.5 rounded-full"
               style={{ backgroundColor: "#21262d", color: "#8b949e", border: "1px solid #30363d" }}
             >
               Godot {project.godot_version}
+            </span>
+          )}
+          {downloads != null && (
+            <span
+              className="text-xs px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: "#21262d", color: "#8b949e", border: "1px solid #30363d" }}
+            >
+              ↓ {downloads.toLocaleString()}
             </span>
           )}
         </div>
