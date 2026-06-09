@@ -93,7 +93,7 @@ function SettingsPanel({ project, onClose, onSave, onDelete }) {
         </button>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="secondary" onClick={() => onSave(form)}>Save</Button>
+          <Button variant="secondary" onClick={() => onSave(Object.fromEntries(Object.entries(form).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v])))}>Save</Button>
         </div>
       </div>
 

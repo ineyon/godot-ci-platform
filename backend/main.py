@@ -162,12 +162,12 @@ async def get_itch_stats(project_id: str):
         raise HTTPException(status_code=404, detail="Project not found")
 
     # butler_api_key — це і є itch.io API key, той самий що в настройках
-    api_key = project.get("butler_api_key", "")
+    api_key = project.get("butler_api_key", "").strip()
     if not api_key:
         raise HTTPException(status_code=400, detail="API key not set")
 
-    itch_username = project.get("itch_username", "")
-    itch_game_id = project.get("itch_game_id", "")
+    itch_username = project.get("itch_username", "").strip()
+    itch_game_id = project.get("itch_game_id", "").strip()
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
@@ -226,5 +226,5 @@ async def get_itch_stats(project_id: str):
                 "uploads": uploads,
             }
 
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=502, detail=f"Network error: {str(e)}")
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"itch.io error: {str(e)}")

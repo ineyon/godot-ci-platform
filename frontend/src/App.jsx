@@ -13,6 +13,7 @@ function App() {
   // зберігаємо id останнього білду для кожного проєкту щоб показувати нотифікацію
   const lastBuildIds = useRef({})
   const [notifications, setNotifications] = useState({})
+  const [lastDeployMap, setLastDeployMap] = useState({})
 
   useEffect(() => {
     fetchProjects()
@@ -23,6 +24,7 @@ function App() {
     if (projects.length === 0) return
     const checkBuilds = async () => {
       const newNotifications = { ...notifications }
+      const newLastDeployMap = { ...lastDeployMap }
       for (const project of projects) {
         try {
           const res = await fetch(`${API}/api/projects/${project.id}/builds`)
@@ -30,16 +32,18 @@ function App() {
           const builds = await res.json()
           if (builds.length === 0) continue
           const latestId = builds[0].id
-          // якщо айді змінився відносно того що пам'ятаємо — показуємо крапку
           if (lastBuildIds.current[project.id] !== undefined && lastBuildIds.current[project.id] !== latestId) {
             newNotifications[project.id] = true
           }
-          lastBuildIds.current[project.id] = latestId // завжди оновлюємо, інакше нотифікація висіла б назавжди
+          lastBuildIds.current[project.id] = latestId
+          const lastDeploy = builds.find(b => b.name === "Deploy to itch.io" && b.conclusion === "success")
+          if (lastDeploy) newLastDeployMap[project.id] = lastDeploy.created_at
         } catch {
           // ігноруємо
         }
       }
       setNotifications(newNotifications)
+      setLastDeployMap(newLastDeployMap)
     }
     const interval = setInterval(checkBuilds, 30000)
     return () => clearInterval(interval)
@@ -97,6 +101,7 @@ function App() {
   const projectsWithNotifications = projects.map(p => ({
     ...p,
     has_notification: !!notifications[p.id],
+    last_deploy: lastDeployMap[p.id] || null,
   }))
 
   return (

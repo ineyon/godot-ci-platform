@@ -77,7 +77,8 @@ function AddProjectPanel({ onClose, onAdd }) {
     setValidating(false)
 
     setLoading(true)
-    await onAdd(form)
+    const trimmed = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v]))
+    await onAdd(trimmed)
     setLoading(false)
   }
 

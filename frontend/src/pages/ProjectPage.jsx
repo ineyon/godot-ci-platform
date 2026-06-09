@@ -125,7 +125,7 @@ function ProjectPage({ project, onBack, onSave, onDelete, onRefresh }) {
           <div className="rounded-xl p-5 flex flex-col gap-3" style={cardStyle}>
             <div className="flex items-center gap-3">
               <img
-                src={itchStats?.cover_url || project.icon_url || "/images/godot-default.png"}
+                src={itchStats?.cover_url ? `${itchStats.cover_url}?t=${Date.now()}` : project.icon_url || "/images/godot-default.png"}
                 alt={project.name}
                 className="w-14 h-14 object-cover rounded-lg"
               />
@@ -139,6 +139,15 @@ function ProjectPage({ project, onBack, onSave, onDelete, onRefresh }) {
                     {itchStats.published ? "Published" : "Unpublished"}
                   </span>
                 )}
+                {(() => {
+                  const lastDeploy = builds.find(b => b.name === "Deploy to itch.io" && b.conclusion === "success")
+                  if (!lastDeploy) return null
+                  return (
+                    <span className="text-xs" style={{ color: "#5a98b1" }}>
+                      Deployed {new Date(lastDeploy.created_at).toLocaleDateString()}
+                    </span>
+                  )
+                })()}
               </div>
             </div>
 

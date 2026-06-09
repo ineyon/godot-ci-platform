@@ -2,6 +2,14 @@ import { useState, useEffect } from "react"
 
 const API = "http://localhost:8000"
 
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) return "today"
+  if (days === 1) return "yesterday"
+  return `${days}d ago`
+}
+
 function ProjectCard({ project, onClick }) {
   const [coverUrl, setCoverUrl] = useState(null)
   const [downloads, setDownloads] = useState(null)
@@ -67,6 +75,14 @@ function ProjectCard({ project, onClick }) {
               style={{ backgroundColor: "#21262d", color: "#8b949e", border: "1px solid #30363d" }}
             >
               ↓ {downloads.toLocaleString()}
+            </span>
+          )}
+          {project.last_deploy && (
+            <span
+              className="text-xs px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: "#0d2030", color: "#5a98b1", border: "1px solid #1a3a50" }}
+            >
+              Deployed {timeAgo(project.last_deploy)}
             </span>
           )}
         </div>
